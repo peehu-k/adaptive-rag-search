@@ -26,9 +26,10 @@ env/
 data/*
 !data/.gitkeep
 
-# Experiment outputs
+# Experiment outputs (curated results live in results/, which is tracked)
 runs/
 *.log
+final_run_console.txt
 
 # Cygwin/msys crash dumps
 *.stackdump

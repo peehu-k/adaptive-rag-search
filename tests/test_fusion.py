@@ -113,3 +113,24 @@ def test_cross_encoder_reranker_runs_on_toy_corpus():
         pytest.skip(f"cross-encoder unavailable: {exc}")
     assert out[0].doc_id == "match"
     assert {h.doc_id for h in out} == set(corpus)
+
+
+def test_cross_encoder_score_cache_avoids_recompute():
+    pytest.importorskip("sentence_transformers")
+    from ragsearch.retrieve import rerank as rr
+
+    try:
+        ce = rr.CrossEncoderReranker(top_n=2)
+        corpus = {"a": "cats are small carnivores", "b": "bond yields rose today"}
+        cand = [Hit("a", 0.5), Hit("b", 0.4)]
+        rr._SCORE_CACHE.clear()
+        first = ce.rerank("tell me about cats", cand, corpus)
+        cached_keys = set(rr._SCORE_CACHE)
+        assert len(cached_keys) == 2
+        # second call must be served entirely from cache (no model needed)
+        rr._load_cross_encoder.cache_clear()
+        second = ce.rerank("tell me about cats", cand, corpus)
+    except Exception as exc:
+        pytest.skip(f"cross-encoder unavailable: {exc}")
+    assert [h.doc_id for h in first] == [h.doc_id for h in second]
+    assert set(rr._SCORE_CACHE) == cached_keys

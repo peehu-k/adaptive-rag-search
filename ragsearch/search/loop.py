@@ -87,6 +87,8 @@ class SearchLoop:
         patience: int = 1,
         max_candidates: int = 6,
         forbid_ids: set[str] | None = None,
+        query_cache: dict | None = None,
+        proposer: MutationProposer | None = None,
         seed: int = 12345,
     ):
         forbid = forbid_ids or set()
@@ -112,9 +114,9 @@ class SearchLoop:
         self.max_candidates = max_candidates
         self.seed = seed
 
-        self.query_cache: dict = {}
+        self.query_cache: dict = query_cache if query_cache is not None else {}
         self.bandit = UCB1()
-        self.proposer = MutationProposer()
+        self.proposer = proposer or MutationProposer()
         self._trials: list[Trial] = []
         self._next_id = 0
 

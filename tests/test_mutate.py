@@ -112,6 +112,27 @@ def test_fusion_miss_recoverable_by_bm25_upweights_bm25():
     )
 
 
+def test_fusion_miss_also_proposes_reranker_and_param_sweeps():
+    report = _fusion_miss_report(recover="dense")
+    names = {m.name for m in MutationProposer().propose(DEFAULT_CONFIG, report)}
+    assert "rerank_enable" in names
+    assert any(n.startswith("bm25_k1_") for n in names)
+    assert any(n.startswith("bm25_b_") for n in names)
+    # the rerank_enable mutation actually flips the config flag
+    mut = next(
+        m for m in MutationProposer().propose(DEFAULT_CONFIG, report)
+        if m.name == "rerank_enable"
+    )
+    assert mut.config.rerank.enabled and mut.config.rerank.top_n == 50
+
+
+def test_mutation_family_strips_numeric_suffix():
+    report = _fusion_miss_report(recover="dense")
+    fams = {m.family for m in MutationProposer().propose(DEFAULT_CONFIG, report)}
+    assert "upweight_dense" in fams  # from upweight_dense_x1.50 / _x2.00
+    assert "bm25_k1" in fams
+
+
 def test_recall_miss_proposes_analyzer_change():
     diags = []
     for i in range(20):

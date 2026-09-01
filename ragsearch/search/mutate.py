@@ -47,9 +47,13 @@ def _dominant_failures(report: FailureReport) -> list[tuple[str, int]]:
 
 
 class MutationProposer:
-    def __init__(self, *, weight_step: float = 0.5, max_per_mode: int = 4):
+    def __init__(
+        self, *, weight_step: float = 0.5, max_per_mode: int = 8,
+        include_reranker: bool = True,
+    ):
         self.weight_step = weight_step
         self.max_per_mode = max_per_mode
+        self.include_reranker = include_reranker
 
     def propose(self, base: PipelineConfig, report: FailureReport) -> list[Mutation]:
         out: list[Mutation] = []
@@ -119,6 +123,47 @@ class MutationProposer:
                 config=base.with_section("fusion", candidate_k=deeper),
                 param_delta={"fusion.candidate_k": deeper},
             ))
+
+        # a cross-encoder re-scores the fused head -- the direct lever when the
+        # gold is already pooled but ranked below k
+        if self.include_reranker and not base.rerank.enabled:
+            muts.append(Mutation(
+                name="rerank_enable",
+                targets=FUSION_MISS,
+                rationale=f"{cite}; add a cross-encoder to reorder the fused top-50",
+                config=base.with_section("rerank", enabled=True, top_n=50),
+                param_delta={"rerank.enabled": True, "rerank.top_n": 50},
+            ))
+
+        # local param sweeps on the ranking knobs
+        for k1 in (1.2, 2.0):
+            if k1 != base.bm25.k1:
+                muts.append(Mutation(
+                    name=f"bm25_k1_{k1}",
+                    targets=FUSION_MISS,
+                    rationale=f"{cite}; sweep BM25 k1 {base.bm25.k1}->{k1}",
+                    config=base.with_section("bm25", k1=k1),
+                    param_delta={"bm25.k1": k1},
+                ))
+        for b in (0.4, 0.6):
+            if b != base.bm25.b:
+                muts.append(Mutation(
+                    name=f"bm25_b_{b}",
+                    targets=FUSION_MISS,
+                    rationale=f"{cite}; sweep BM25 b {base.bm25.b}->{b}",
+                    config=base.with_section("bm25", b=b),
+                    param_delta={"bm25.b": b},
+                ))
+        if base.fusion.method == "rrf":
+            for rk in (20.0, 100.0):
+                if rk != base.fusion.rrf_k:
+                    muts.append(Mutation(
+                        name=f"rrf_k_{int(rk)}",
+                        targets=FUSION_MISS,
+                        rationale=f"{cite}; sweep RRF k {base.fusion.rrf_k}->{rk}",
+                        config=base.with_section("fusion", rrf_k=rk),
+                        param_delta={"fusion.rrf_k": rk},
+                    ))
         return muts[: self.max_per_mode]
 
     def _recall_miss(self, base, report, count, share):
