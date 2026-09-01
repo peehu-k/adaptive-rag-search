@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local tooling state
+.claude/
+
+# Data artifacts (keep the directory, ignore downloaded/generated contents)
+data/*
+!data/.gitkeep
+
+# Experiment outputs
+runs/
+*.log
