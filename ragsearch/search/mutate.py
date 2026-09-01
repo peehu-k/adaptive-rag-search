@@ -9,6 +9,7 @@ evaluates the mutations and keeps only the ones that actually help.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from ragsearch.diagnose.cluster import FailureReport
@@ -32,6 +33,11 @@ class Mutation:
     @property
     def fingerprint(self) -> str:
         return self.config.fingerprint()
+
+    @property
+    def family(self) -> str:
+        """Name with any trailing numeric / ``xN.NN`` suffix stripped."""
+        return re.sub(r"_(x?\d+(\.\d+)?)$", "", self.name)
 
 
 def _dominant_failures(report: FailureReport) -> list[tuple[str, int]]:

@@ -23,7 +23,7 @@ def _build_bm25(config: PipelineConfig, corpus_map: Mapping[str, str]) -> BM25Re
     return BM25Retriever(index, k1=config.bm25.k1, b=config.bm25.b)
 
 
-def _build_dense(config: PipelineConfig, corpus_map, doc_embeddings):
+def _build_dense(config: PipelineConfig, corpus_map, doc_embeddings, query_cache):
     from ragsearch.index.embedder import DenseEmbedder
     from ragsearch.retrieve.dense import DenseRetriever
 
@@ -40,7 +40,10 @@ def _build_dense(config: PipelineConfig, corpus_map, doc_embeddings):
             embedder, doc_ids, [corpus_map[d] for d in doc_ids], verbose=False
         )
     return DenseRetriever.build(
-        {d: "" for d in doc_ids}, embedder=embedder, precomputed=doc_embeddings
+        {d: "" for d in doc_ids},
+        embedder=embedder,
+        precomputed=doc_embeddings,
+        query_cache=query_cache,
     )
 
 
@@ -49,18 +52,22 @@ def build_pipeline(
     corpus_map: Mapping[str, str],
     *,
     doc_embeddings=None,
+    query_cache=None,
 ):
     """Return an object with ``.search(query, k)`` matching ``config``.
 
     ``doc_embeddings`` (an ``(N, dim)`` array aligned with ``corpus_map``'s key
     order) is used when dense retrieval is enabled; if omitted it falls back to
-    the on-disk embedding cache.
+    the on-disk embedding cache. ``query_cache`` is an optional shared
+    ``{query: vector}`` dict so repeated rebuilds don't re-encode queries.
     """
     retrievers: dict = {}
     if config.use_bm25:
         retrievers["bm25"] = _build_bm25(config, corpus_map)
     if config.use_dense:
-        retrievers["dense"] = _build_dense(config, corpus_map, doc_embeddings)
+        retrievers["dense"] = _build_dense(
+            config, corpus_map, doc_embeddings, query_cache
+        )
 
     if len(retrievers) == 1:
         return next(iter(retrievers.values()))
