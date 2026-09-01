@@ -87,10 +87,34 @@ class HybridRetriever:
         raise ValueError(f"unknown fusion method {self.method!r}")
 
     def search(self, query: str, k: int = 10) -> list[Hit]:
-        rankings = [
-            self.retrievers[name].search(query, k=self.candidate_k)
+        return self.search_trace(query).final[:k]
+
+    def search_trace(self, query: str) -> "HybridTrace":
+        """Same as :meth:`search` but keeps every intermediate ranking.
+
+        Failure diagnosis needs to see the per-retriever candidate lists, the
+        fused order, and the post-rerank order to tell recall misses from
+        fusion misses from reranker misses.
+        """
+        per_retriever = {
+            name: self.retrievers[name].search(query, k=self.candidate_k)
             for name in self._ordered_names()
-        ]
-        fused = self.fuse(rankings)
+        }
+        fused = self.fuse(list(per_retriever.values()))
         reranked = self.reranker.rerank(query, fused, self.corpus)
-        return reranked[:k]
+        return HybridTrace(
+            query=query,
+            per_retriever=per_retriever,
+            fused=fused,
+            final=reranked,
+            has_reranker=not isinstance(self.reranker, IdentityReranker),
+        )
+
+
+@dataclass
+class HybridTrace:
+    query: str
+    per_retriever: dict[str, list[Hit]]
+    fused: list[Hit]
+    final: list[Hit]
+    has_reranker: bool
