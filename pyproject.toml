@@ -11,6 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest"]
+dense = ["numpy", "sentence-transformers", "faiss-cpu"]
 
 [tool.setuptools.packages.find]
 include = ["ragsearch*"]
