@@ -29,3 +29,6 @@ data/*
 # Experiment outputs
 runs/
 *.log
+
+# Cygwin/msys crash dumps
+*.stackdump

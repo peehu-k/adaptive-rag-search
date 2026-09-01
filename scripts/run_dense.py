@@ -8,17 +8,12 @@ the real evaluation harness.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import time
-from pathlib import Path
 
-import numpy as np
-
-from ragsearch.benchmark import SCIFACT_DIR, doc_text, load_benchmark
+from ragsearch.benchmark import doc_text, load_benchmark
+from ragsearch.index.cache import cached_doc_embeddings
 from ragsearch.index.embedder import DEFAULT_MODEL, DenseEmbedder
 from ragsearch.retrieve.dense import DenseRetriever
-
-CACHE_DIR = SCIFACT_DIR / "cache"
 
 
 def recall_at_k(hits, relevant, k):
@@ -31,24 +26,6 @@ def mrr_at_k(hits, relevant, k):
         if h.doc_id in relevant:
             return 1.0 / rank
     return 0.0
-
-
-def cached_doc_embeddings(embedder, doc_ids, texts):
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    key = hashlib.sha1(
-        (embedder.model_name + f"|norm={embedder.normalize}|msl={embedder.max_seq_length}"
-         + f"|n={len(doc_ids)}|{doc_ids[0]}|{doc_ids[-1]}").encode()
-    ).hexdigest()[:16]
-    path = CACHE_DIR / f"emb_{key}.npy"
-    if path.exists():
-        print(f"loaded cached embeddings {path.name}")
-        return np.load(path)
-    print(f"encoding {len(texts)} documents ...")
-    t0 = time.perf_counter()
-    vecs = embedder.encode_documents(texts)
-    print(f"  done in {time.perf_counter() - t0:.1f}s -> {path.name}")
-    np.save(path, vecs)
-    return vecs
 
 
 def main() -> int:
