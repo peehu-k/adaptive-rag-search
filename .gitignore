@@ -19,9 +19,6 @@ env/
 .vscode/
 .DS_Store
 
-# Local tooling state
-.claude/
-
 # Data artifacts (keep the directory, ignore downloaded/generated contents)
 data/*
 !data/.gitkeep
