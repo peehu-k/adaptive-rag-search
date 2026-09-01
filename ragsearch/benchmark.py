@@ -50,6 +50,13 @@ class Benchmark:
         return {qid: self.queries[qid] for qid in self.splits[split]}
 
 
+def doc_text(doc: dict[str, str]) -> str:
+    """Flatten a corpus entry to the single string retrievers index over."""
+    title = (doc.get("title") or "").strip()
+    body = (doc.get("text") or "").strip()
+    return f"{title}. {body}".strip() if title else body
+
+
 def _read_jsonl(path: Path):
     with path.open(encoding="utf-8") as fh:
         for line in fh:
